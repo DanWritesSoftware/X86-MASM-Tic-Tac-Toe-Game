@@ -3,6 +3,21 @@
 ; Homework #6
 ; 10/3/2024
 
+; Program: Tic-Tac-Toe Game
+; Description: This program implements a simple console-based Tic-Tac-Toe game for two players.
+; Players are prompted to enter their names, and they take turns to input their moves on a 3x3 grid.
+; The program checks for valid moves, manages player turns, and detects winning combinations.
+; If a player wins or if an invalid move is made, appropriate messages are displayed.
+; The game continues until a player wins or the board is full.
+; Key Features:
+; - Displays the current game grid.
+; - Collects player names.
+; - Validates user input for moves.
+; - Tracks moves and checks for winning conditions.
+; - Prompts players in turn to make their moves.
+
+
+
 INCLUDE C:\Irvine\Irvine32.inc          
 INCLUDELIB C:\Irvine\Irvine32.lib       
 
@@ -12,13 +27,13 @@ INCLUDELIB C:\Irvine\Irvine32.lib
 ExitProcess proto, dwExitCode:dword     
 
 .data
-    grid BYTE "1", "2", "3", 0                    ; the first row of the grid
-         BYTE "4", "5", "6", 0                    ; the second row of the grid
-         BYTE "7", "8", "9", 0                    ; the third row of the grid
+    grid BYTE "1", "|", "2", "|", "3", 0                    ; the first row of the grid
+         BYTE "4", "|", "5", "|", "6", 0                    ; the second row of the grid
+         BYTE "7", "|", "8", "|", "9", 0                    ; the third row of the grid
 
-    lookupTable DWORD 0, 4, 8                       ; index for input 1, 2, 3
-                DWORD 1, 5, 9                       ; index for input 4, 5, 6
-                DWORD 2, 6, 10                      ; index for input 7, 8, 9
+    lookupTable DWORD 0, 2, 4                       ; index for input 1, 2, 3
+                DWORD 6, 8, 10                       ; index for input 4, 5, 6
+                DWORD 12, 14, 16                       ; index for input 7, 8, 9
 
     winningCombinations DWORD 0, 1, 2          ; Row 1
                         DWORD 3, 4, 5          ; Row 2
@@ -58,21 +73,34 @@ gameLoop:
     call switchPlayer
     jmp gameLoop
 
+
 displayGrid proc
+; Summary:
+; Input: None
+; Output: Displays the current game grid to the console.
+; Registers Used: 
+;   ECX - Loop counter for rows
+;   EDX - Pointer to the grid data for output
                                         ; display the grid
+    mov ecx, 3                          ; loop counter for each row
     mov edx, OFFSET grid                ; load grid into edx for output
-    call WriteString                    ; display first row
+
+    displayRow:
+    call Writestring                    ; display row
     call Crlf                           ; print new line
-    add edx, 4                          ; move to next row in grid
-    call WriteString                    ; display second row
-    call Crlf                           ; print new line
-    add edx, 4                          ; move to next row in grid
-    call WriteString                    ; display third row
-    call Crlf                           ; print new line
+    add edx, 6                          ; move to next line
+    loop displayRow                     ; loop all rows
+
     ret
 displayGrid endp
 
 collectNames proc
+; Summary:
+; Input: Names of Players
+; Output: Prompts
+; Registers Used: 
+;   EDX - Pointer to the prompt or player name
+;   ECX - Size of the name buffer
                                         ; collect user names 
                                         ; PLAYER 1
     mov edx, OFFSET p1NamePrompt        ; load prompt into edx for output
@@ -90,7 +118,14 @@ collectNames proc
 collectNames endp
 
 playTurn proc
-                                    ; collect player input
+; Summary:
+; Input: Move input
+; Output: Updates the grid with the player's move or prompts for a valid move.
+; Registers Used:
+;   EAX - Holds the converted move index
+;   EBX - Pointer to the lookup table or player move record
+;   ECX - Max input length for player input
+;   EDX - Pointer to prompt strings or move record                                   ; collect player input
     cmp currentPlayerTurn, 2        ; is it player 2's turn?
     je promptPlayer2                ; if yes, display player 2 prompt
 
@@ -177,7 +212,11 @@ playTurn proc
 playTurn endp
 
 switchPlayer proc
-                                    ; Switch to the other player
+; Summary:
+; Input: None
+; Output: Switches the current player.
+; Registers Used:
+;   CurrentPlayerTurn (global variable) - holds the current player's turn (1 or 2)                                    ; Switch to the other player
     cmp currentPlayerTurn, 1        ; is it player 1 now?
     je switchToPlayer2              ; if yes, change to player 2
     mov currentPlayerTurn, 1        ; if not, set it to player 1
@@ -191,6 +230,14 @@ switchPlayer proc
 switchPlayer endp
 
 checkWin proc
+; Summary:
+; Input: None (checks if current player has a winning combination)
+; Output: Displays winning message if a player wins.
+; Registers Used:
+;   ECX - Counter for the number of winning combinations
+;   ESI - Pointer to the winning combinations
+;   EAX, EBX, EDX - Index registers for checking player's moves
+;   EDI - Pointer to the current player's move record
                                         ; Check if the current player has a winning combination
     mov ecx, 8                          ; number of winning combiniations
     mov esi, OFFSET winningCombinations ; load winning combinations into esi
@@ -206,20 +253,26 @@ checkWin proc
     mov edi, OFFSET p2MoveRecord        ; else, check player 2 move record
     jmp checkMoves
     checkPlayer1Moves:
-    mov edi, OFFSET p1MoveRecord
+    mov edi, OFFSET p1MoveRecord        ; load player 1's move record into EDI
 
     checkMoves:
-    mov eax, [edi + eax * 4]
-    mov ebx, [edi + ebx * 4]
-    mov edx, [edi + edx * 4]
-    and eax, ebx
-    and eax, edx
-    cmp eax, 1
-    je playerWins
+        mov eax, [edi + eax * 4]            ; Load the move record for the index in EAX
+        test eax, eax                       ; Check if this position is occupied (not zero)
+        jz notWinning                       ; If it's zero, jump to notWinning
 
-    ; Move to the next combination
-    add esi, 12
-    loop checkCombination
+        mov eax, [edi + ebx * 4]            ; Load the move record for the index in EBX
+        test eax, eax                       ; Check if this position is occupied
+        jz notWinning                       ; If it's zero, jump to notWinning
+
+        mov eax, [edi + edx * 4]            ; Load the move record for the index in EDX
+        test eax, eax                       ; Check if this position is occupied
+        jz notWinning                       ; If it's zero, jump to notWinning
+
+        jmp playerWins                      ; If all three indices are occupied, jump to playerWins
+
+    notWinning:
+        add esi, 12                         ; Move to the next set of winning indices
+        loop checkCombination               ; Decrement ECX and loop back if not zero
 
     ret
 
